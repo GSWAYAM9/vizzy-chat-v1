@@ -1,15 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect } from 'react'
 import ChatSidebar from '@/components/chat-sidebar'
 import ChatWindow from '@/components/chat-window'
 import type { Conversation, Message, GeneratedImage } from '@/lib/db'
 
 export default function ChatPage() {
-  const router = useRouter()
-  const [user, setUser] = useState<any>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -17,27 +13,11 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
-  const supabase = createClient()
-
-  // Check auth and load initial data
+  // Load initial data on mount
   useEffect(() => {
-    const checkAuth = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-
-      setUser(user)
-      await loadConversations()
-      setLoading(false)
-    }
-
-    checkAuth()
-  }, [router, supabase])
+    loadConversations()
+    setLoading(false)
+  }, [])
 
   const loadConversations = async () => {
     try {
