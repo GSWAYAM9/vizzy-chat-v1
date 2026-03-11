@@ -1,32 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 
-export async function ensureGuestUser(guestUserId: string) {
-  const supabase = await createClient()
-  
-  // Check if guest user exists
-  const { data: existingUser } = await supabase
-    .from('users')
-    .select('id')
-    .eq('id', guestUserId)
-    .single()
-  
-  if (!existingUser) {
-    // Create guest user
-    const { error: userError } = await supabase
-      .from('users')
-      .insert({ id: guestUserId, email: 'guest@vizzy.app' })
-    
-    if (userError && userError.code !== '23505') {
-      // Ignore duplicate key error
-      console.error('Error creating guest user:', userError)
-    }
-  }
-}
-
 export interface Profile {
   id: string
-  username: string | null
-  avatar_url: string | null
+  username?: string
+  avatar_url?: string
   created_at: string
 }
 
@@ -50,50 +27,174 @@ export interface Message {
 export interface GeneratedImage {
   id: string
   conversation_id: string
-  message_id: string | null
+  message_id?: string
   prompt: string
   image_url: string
-  bria_image_id: string | null
+  bria_image_id?: string
   created_at: string
 }
 
-export async function createProfile(userId: string, email: string) {
+const ANON_USER_ID = '00000000-0000-0000-0000-000000000000'
+
+// Raw SQL queries to bypass REST API schema cache issues
+export async function createConversationAnon(title: string = 'New Conversation') {
   const supabase = await createClient()
   
-  // First ensure user exists in users table
-  const { error: userError } = await supabase
-    .from('users')
-    .insert({ id: userId, email })
-    .select()
-    .single()
+  const { data, error } = await supabase.rpc('create_conversation_anon', {
+    p_title: title,
+    p_context: 'Home (Personal)',
+  })
   
-  if (userError && userError.code !== 'PGRST116') throw userError
+  if (error) {
+    // Fallback: use direct insert if RPC doesn't work
+    const { data: insertData, error: insertError } = await supabase
+      .from('conversations')
+      .insert({
+        user_id: ANON_USER_ID,
+        title,
+        context: 'Home (Personal)',
+      })
+      .select()
+      .single()
+    
+    if (insertError) throw insertError
+    return insertData as Conversation
+  }
   
-  // Then create profile
-  const { data, error } = await supabase
-    .from('profiles')
-    .insert({ id: userId, username: email.split('@')[0] })
-    .select()
-    .single()
-  
-  if (error) throw error
-  return data as Profile
+  return data as Conversation
 }
 
-export async function getProfile(userId: string) {
+export async function getConversationsAnon() {
   const supabase = await createClient()
   
   const { data, error } = await supabase
-    .from('profiles')
+    .from('conversations')
     .select('*')
-    .eq('id', userId)
+    .eq('user_id', ANON_USER_ID)
+    .order('updated_at', { ascending: false })
+  
+  if (error) throw error
+  return (data || []) as Conversation[]
+}
+
+export async function getConversationAnon(conversationId: string) {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('id', conversationId)
     .single()
   
   if (error) throw error
-  return data as Profile
+  return data as Conversation
 }
 
-export async function createConversation(userId: string, title: string = 'New Conversation') {
+export async function updateConversationAnon(
+  conversationId: string,
+  updates: Partial<Pick<Conversation, 'title' | 'context'>>
+) {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('conversations')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', conversationId)
+    .select()
+    .single()
+  
+  if (error) throw error
+  return data as Conversation
+}
+
+export async function deleteConversationAnon(conversationId: string) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase
+    .from('conversations')
+    .delete()
+    .eq('id', conversationId)
+  
+  if (error) throw error
+}
+
+export async function addMessageAnon(
+  conversationId: string,
+  role: 'user' | 'assistant',
+  content: string
+) {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({
+      conversation_id: conversationId,
+      role,
+      content,
+    })
+    .select()
+    .single()
+  
+  if (error) throw error
+  return data as Message
+}
+
+export async function getMessagesAnon(conversationId: string) {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true })
+  
+  if (error) throw error
+  return (data || []) as Message[]
+}
+
+export async function addGeneratedImageAnon(
+  conversationId: string,
+  messageId: string | null,
+  prompt: string,
+  imageUrl: string,
+  briaImageId: string | null = null
+) {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('generated_images')
+    .insert({
+      conversation_id: conversationId,
+      message_id: messageId,
+      prompt,
+      image_url: imageUrl,
+      bria_image_id: briaImageId,
+    })
+    .select()
+    .single()
+  
+  if (error) throw error
+  return data as GeneratedImage
+}
+
+export async function getGeneratedImagesAnon(conversationId: string) {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('generated_images')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: false })
+  
+  if (error) throw error
+  return (data || []) as GeneratedImage[]
+}
+
+// Standard authenticated functions (for future use)
+export async function createConversation(userId: string, title: string) {
   const supabase = await createClient()
   
   const { data, error } = await supabase
@@ -120,62 +221,23 @@ export async function getConversations(userId: string) {
     .order('updated_at', { ascending: false })
   
   if (error) throw error
-  return data as Conversation[]
+  return (data || []) as Conversation[]
 }
 
-export async function getConversation(conversationId: string, userId: string) {
+export async function getMessages(conversationId: string) {
   const supabase = await createClient()
   
   const { data, error } = await supabase
-    .from('conversations')
+    .from('messages')
     .select('*')
-    .eq('id', conversationId)
-    .eq('user_id', userId)
-    .single()
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true })
   
   if (error) throw error
-  return data as Conversation
+  return (data || []) as Message[]
 }
 
-export async function updateConversation(
-  conversationId: string,
-  userId: string,
-  updates: Partial<Pick<Conversation, 'title' | 'context'>>
-) {
-  const supabase = await createClient()
-  
-  const { data, error } = await supabase
-    .from('conversations')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', conversationId)
-    .eq('user_id', userId)
-    .select()
-    .single()
-  
-  if (error) throw error
-  return data as Conversation
-}
-
-export async function deleteConversation(conversationId: string, userId: string) {
-  const supabase = await createClient()
-  
-  const { error } = await supabase
-    .from('conversations')
-    .delete()
-    .eq('id', conversationId)
-    .eq('user_id', userId)
-  
-  if (error) throw error
-}
-
-export async function addMessage(
-  conversationId: string,
-  role: 'user' | 'assistant',
-  content: string
-) {
+export async function addMessage(conversationId: string, role: 'user' | 'assistant', content: string) {
   const supabase = await createClient()
   
   const { data, error } = await supabase
@@ -190,19 +252,6 @@ export async function addMessage(
   
   if (error) throw error
   return data as Message
-}
-
-export async function getMessages(conversationId: string) {
-  const supabase = await createClient()
-  
-  const { data, error } = await supabase
-    .from('messages')
-    .select('*')
-    .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: true })
-  
-  if (error) throw error
-  return data as Message[]
 }
 
 export async function addGeneratedImage(
@@ -230,15 +279,15 @@ export async function addGeneratedImage(
   return data as GeneratedImage
 }
 
-export async function getGeneratedImages(conversationId: string) {
+export async function createProfile(userId: string, email: string) {
   const supabase = await createClient()
   
   const { data, error } = await supabase
-    .from('generated_images')
-    .select('*')
-    .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: false })
+    .from('profiles')
+    .insert({ id: userId, username: email.split('@')[0] })
+    .select()
+    .single()
   
   if (error) throw error
-  return data as GeneratedImage[]
+  return data as Profile
 }
