@@ -1,14 +1,19 @@
-import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import type { Metadata, Viewport } from 'next'
+import { Inter, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
+export const viewport: Viewport = {
+  themeColor: '#0a0a0f',
+  colorScheme: 'dark',
+}
+
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
+  title: 'Vizzy Chat - AI Creative Assistant',
+  description: 'Multimodal AI assistant for chat and image generation powered by Groq and Bria',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -35,8 +40,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className="font-sans antialiased">
+    <html lang="en" className="dark">
+      <body className={`${inter.variable} font-sans antialiased min-h-screen bg-background`}>
         {children}
         <Analytics />
       </body>
