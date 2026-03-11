@@ -1,12 +1,14 @@
-import { addGeneratedImageAnon } from '@/lib/db'
+import { addGeneratedImage } from '@/lib/db'
 
 const BRIA_API_KEY = process.env.BRIA_API_KEY
-const BRIA_API_URL = 'https://api.bria.ai/v2'
+const BRIA_API_URL = 'https://engine.prod.bria-api.com/v1'
 
 interface BriaImageResponse {
-  inference_id: string
-  images: Array<{
-    url: string
+  result: Array<{
+    urls: Array<{
+      url: string
+    }>
+    seed: number
   }>
 }
 
@@ -29,16 +31,16 @@ export async function POST(req: Request) {
     }
 
     // Call Bria API to generate image
-    const briaResponse = await fetch(`${BRIA_API_URL}/text_to_image`, {
+    const briaResponse = await fetch(`${BRIA_API_URL}/text-to-image/base/2.3`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${BRIA_API_KEY}`,
+        'api_token': BRIA_API_KEY,
       },
       body: JSON.stringify({
         prompt,
         num_results: 1,
-        aspect_ratio: '1:1',
+        sync: true,
       }),
     })
 
@@ -53,22 +55,22 @@ export async function POST(req: Request) {
 
     const data: BriaImageResponse = await briaResponse.json()
 
-    if (!data.images || data.images.length === 0) {
+    if (!data.result || data.result.length === 0 || !data.result[0].urls?.[0]?.url) {
       return Response.json(
         { error: 'No images generated' },
         { status: 500 }
       )
     }
 
-    const imageUrl = data.images[0].url
+    const imageUrl = data.result[0].urls[0].url
 
     // Store image in database
-    const generatedImage = await addGeneratedImageAnon(
+    const generatedImage = await addGeneratedImage(
       conversationId,
       messageId || null,
       prompt,
       imageUrl,
-      data.inference_id
+      null
     )
 
     return Response.json({
