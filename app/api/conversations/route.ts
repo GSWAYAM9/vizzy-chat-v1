@@ -1,4 +1,4 @@
-// Conversations API - Guest Mode
+// Conversations API - Guest Mode (v2)
 import {
   createConversationAnon,
   getConversationsAnon,
@@ -6,6 +6,7 @@ import {
   deleteConversationAnon,
 } from '@/lib/db'
 
+// GET - List all conversations
 export async function GET() {
   try {
     const conversations = await getConversationsAnon()
