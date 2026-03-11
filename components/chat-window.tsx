@@ -13,7 +13,7 @@ interface ChatWindowProps {
   generatedImages: GeneratedImage[]
   onMessageAdded: (message: Message) => void
   onImageGenerated: (image: GeneratedImage) => void
-  onStartConversation?: () => Promise<void>
+  onStartConversation?: (initialMessage?: string) => Promise<void>
 }
 
 export default function ChatWindow({
@@ -25,11 +25,14 @@ export default function ChatWindow({
   onStartConversation,
 }: ChatWindowProps) {
   const [input, setInput] = useState('')
+  const [welcomeInput, setWelcomeInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isGeneratingImage, setIsGeneratingImage] = useState(false)
+  const [isStartingConversation, setIsStartingConversation] = useState(false)
   const [showGallery, setShowGallery] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const welcomeTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -45,6 +48,13 @@ export default function ChatWindow({
       textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px'
     }
   }, [input])
+
+  useEffect(() => {
+    if (welcomeTextareaRef.current) {
+      welcomeTextareaRef.current.style.height = 'auto'
+      welcomeTextareaRef.current.style.height = Math.min(welcomeTextareaRef.current.scrollHeight, 200) + 'px'
+    }
+  }, [welcomeInput])
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -138,9 +148,24 @@ export default function ChatWindow({
     }
   }
 
-  const handleStartNewConversation = async () => {
+  const handleWelcomeSend = async () => {
+    if (!welcomeInput.trim() || isStartingConversation) return
+    
+    const message = welcomeInput.trim()
+    setIsStartingConversation(true)
+    
     if (onStartConversation) {
-      await onStartConversation()
+      await onStartConversation(message)
+      setWelcomeInput('')
+    }
+    
+    setIsStartingConversation(false)
+  }
+
+  const handleWelcomeKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleWelcomeSend()
     }
   }
 
@@ -174,36 +199,54 @@ export default function ChatWindow({
         {/* Input Area for Welcome Screen */}
         <div className="p-4 lg:p-6 border-t border-border/30 relative">
           <div className="max-w-3xl mx-auto">
-            <div 
-              onClick={handleStartNewConversation}
-              className="glass-strong rounded-2xl p-1 cursor-pointer hover:ring-2 hover:ring-accent/50 hover:shadow-lg hover:shadow-accent/10 transition-all duration-300 border border-border/20 hover:border-border/40"
-            >
-              <div className="flex items-center gap-3 px-4 py-4">
-                <div className="flex-1 text-muted-foreground/60 text-base font-medium">
-                  Click here to start a new conversation...
+            <div className="glass-strong rounded-2xl p-1 focus-within:ring-2 focus-within:ring-accent/70 focus-within:shadow-lg focus-within:shadow-accent/20 transition-all duration-300 border border-border/20 hover:border-border/40">
+              <div className="flex flex-col">
+                <div className="flex items-end gap-3 px-4 py-3">
+                  <textarea
+                    ref={welcomeTextareaRef}
+                    value={welcomeInput}
+                    onChange={(e) => setWelcomeInput(e.target.value)}
+                    onKeyDown={handleWelcomeKeyDown}
+                    placeholder="Type your message here to start chatting..."
+                    disabled={isStartingConversation}
+                    rows={1}
+                    className="flex-1 bg-transparent border-0 resize-none text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50 text-base leading-relaxed max-h-[200px] font-medium"
+                  />
+                  <div className="flex items-center gap-2">
+                    {welcomeInput.trim() && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/30 text-xs text-muted-foreground">
+                        <span>{welcomeInput.length}</span>
+                      </div>
+                    )}
+                    <Button
+                      onClick={handleWelcomeSend}
+                      disabled={isStartingConversation || !welcomeInput.trim()}
+                      size="icon"
+                      title="Send message (Enter)"
+                      className="w-10 h-10 rounded-lg bg-gradient-to-r from-accent to-accent/80 hover:from-accent hover:to-accent hover:shadow-lg hover:shadow-accent/40 text-accent-foreground transition-all duration-200 disabled:opacity-30 hover:scale-105 active:scale-95 flex-shrink-0"
+                    >
+                      {isStartingConversation ? (
+                        <Loader2 size={20} className="animate-spin" />
+                      ) : (
+                        <ArrowUp size={20} />
+                      )}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="w-10 h-10 rounded-lg text-muted-foreground/50"
-                    disabled
-                  >
-                    <ImageIcon size={20} />
-                  </Button>
-                  <Button
-                    size="icon"
-                    className="w-10 h-10 rounded-lg bg-gradient-to-r from-accent to-accent/80 text-accent-foreground opacity-50"
-                    disabled
-                  >
-                    <ArrowUp size={20} />
-                  </Button>
+                <div className="flex items-center justify-between px-4 py-2.5 bg-background/40 rounded-b-xl border-t border-border/10">
+                  <div className="text-xs text-muted-foreground/70 space-x-4 flex">
+                    <span>Press Enter to send</span>
+                    <span>-</span>
+                    <span>Shift+Enter for new line</span>
+                  </div>
+                  {welcomeInput.trim() && (
+                    <div className="text-xs text-accent font-medium animate-pulse">
+                      Ready to start
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground/50 text-center mt-3">
-              Start a new conversation to chat or generate images
-            </p>
           </div>
         </div>
       </div>
