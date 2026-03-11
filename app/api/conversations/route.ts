@@ -10,7 +10,7 @@ export async function GET() {
     const conversations = await getConversationsAnon()
     return Response.json({ conversations })
   } catch (error) {
-    console.error('[v0] Get conversations error:', error)
+    console.error('Get conversations error:', error)
     return Response.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const conversation = await createConversationAnon(title)
     return Response.json({ conversation }, { status: 201 })
   } catch (error) {
-    console.error('[v0] Create conversation error:', error)
+    console.error('Create conversation error:', error)
     return Response.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -40,7 +40,7 @@ export async function PATCH(req: Request) {
     const conversation = await updateConversationAnon(conversationId, { title, context })
     return Response.json({ conversation })
   } catch (error) {
-    console.error('[v0] Update conversation error:', error)
+    console.error('Update conversation error:', error)
     return Response.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -60,7 +60,7 @@ export async function DELETE(req: Request) {
     await deleteConversationAnon(conversationId)
     return Response.json({ success: true })
   } catch (error) {
-    console.error('[v0] Delete conversation error:', error)
+    console.error('Delete conversation error:', error)
     return Response.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
