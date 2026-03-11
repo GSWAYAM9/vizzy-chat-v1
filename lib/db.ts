@@ -292,3 +292,53 @@ export async function createProfile(userId: string, email: string) {
   if (error) throw error
   return data as Profile
 }
+
+export async function updateConversation(
+  conversationId: string,
+  userId: string,
+  updates: Partial<Pick<Conversation, 'title' | 'context'>>
+) {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('conversations')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', conversationId)
+    .eq('user_id', userId)
+    .select()
+    .single()
+  
+  if (error) throw error
+  return data as Conversation
+}
+
+export async function deleteConversation(conversationId: string, userId: string) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase
+    .from('conversations')
+    .delete()
+    .eq('id', conversationId)
+    .eq('user_id', userId)
+  
+  if (error) throw error
+}
+
+export async function ensureGuestUser(guestUserId: string) {
+  const supabase = await createClient()
+  
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', guestUserId)
+    .single()
+  
+  if (!existingUser) {
+    await supabase
+      .from('users')
+      .upsert({ id: guestUserId, email: 'guest@vizzy.app' }, { onConflict: 'id' })
+  }
+}
