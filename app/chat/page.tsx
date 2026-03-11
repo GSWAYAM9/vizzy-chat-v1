@@ -44,12 +44,13 @@ export default function ChatPage() {
   }
 
   const handleNewConversation = async (initialMessage?: string) => {
+    // Guard: initialMessage must be a string (not a React event object)
+    const msg = typeof initialMessage === 'string' ? initialMessage.trim() : undefined
     try {
-      // Create the conversation
       const response = await fetch('/api/conversations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: initialMessage ? initialMessage.slice(0, 50) : 'New Conversation' }),
+        body: JSON.stringify({ title: msg ? msg.slice(0, 50) : 'New Conversation' }),
       })
       if (!response.ok) throw new Error('Failed to create conversation')
       const data = await response.json()
@@ -59,24 +60,23 @@ export default function ChatPage() {
       setMessages([])
       setGeneratedImages([])
 
-      // If there's an initial message, send it
-      if (initialMessage && initialMessage.trim()) {
+      // If there's an initial message, send it via API
+      if (msg) {
         const userMsg: Message = {
           id: Math.random().toString(36).substr(2, 9),
           conversation_id: newConversation.id,
           role: 'user',
-          content: initialMessage.trim(),
+          content: msg,
           created_at: new Date().toISOString(),
         }
         setMessages([userMsg])
 
-        // Send to API
         const chatResponse = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             conversationId: newConversation.id,
-            message: initialMessage.trim(),
+            message: msg,
           }),
         })
 
@@ -87,10 +87,8 @@ export default function ChatPage() {
             while (true) {
               const { done, value } = await reader.read()
               if (done) break
-              const text = new TextDecoder().decode(value)
-              fullContent += text
+              fullContent += new TextDecoder().decode(value)
             }
-
             const assistantMsg: Message = {
               id: Math.random().toString(36).substr(2, 9),
               conversation_id: newConversation.id,
