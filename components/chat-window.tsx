@@ -231,52 +231,73 @@ export default function ChatWindow({
       </div>
 
       {/* Input Area */}
-      <div className="p-4 lg:p-6">
+      <div className="p-4 lg:p-6 border-t border-border/30">
         <div className="max-w-4xl mx-auto">
-          <div className="glass-strong rounded-2xl p-2 focus-within:ring-2 focus-within:ring-accent/50 transition-all duration-300">
-            <div className="flex items-end gap-2">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Message Vizzy or describe an image..."
-                disabled={isLoading || isGeneratingImage}
-                rows={1}
-                className="flex-1 bg-transparent border-0 resize-none px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50 text-sm leading-relaxed max-h-[200px]"
-              />
-              <div className="flex items-center gap-2 pb-2 pr-2">
-                <Button
-                  onClick={handleGenerateImage}
-                  disabled={isGeneratingImage || !input.trim()}
-                  size="icon"
-                  variant="ghost"
-                  className="w-10 h-10 rounded-xl hover:bg-accent/20 text-muted-foreground hover:text-accent transition-all duration-200 disabled:opacity-30"
-                >
-                  {isGeneratingImage ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : (
-                    <ImageIcon size={18} />
+          <div className="glass-strong rounded-2xl p-1 focus-within:ring-2 focus-within:ring-accent/70 focus-within:shadow-lg focus-within:shadow-accent/20 transition-all duration-300 border border-border/20 hover:border-border/40">
+            <div className="flex flex-col">
+              {/* Textarea */}
+              <div className="flex items-end gap-3 px-4 py-3">
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask Vizzy anything... or describe an image to create"
+                  disabled={isLoading || isGeneratingImage}
+                  rows={1}
+                  className="flex-1 bg-transparent border-0 resize-none text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50 text-base leading-relaxed max-h-[200px] font-medium"
+                />
+                <div className="flex items-center gap-2">
+                  {input.trim() && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/30 text-xs text-muted-foreground">
+                      <span>{input.length}</span>
+                    </div>
                   )}
-                </Button>
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={isLoading || !input.trim()}
-                  size="icon"
-                  className="w-10 h-10 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground transition-all duration-200 disabled:opacity-30 hover:scale-105 active:scale-95"
-                >
-                  {isLoading ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : (
-                    <ArrowUp size={18} />
-                  )}
-                </Button>
+                  <Button
+                    onClick={handleGenerateImage}
+                    disabled={isGeneratingImage || !input.trim()}
+                    size="icon"
+                    variant="ghost"
+                    title="Generate Image"
+                    className="w-10 h-10 rounded-lg hover:bg-accent/15 text-muted-foreground hover:text-accent transition-all duration-200 disabled:opacity-30 flex-shrink-0"
+                  >
+                    {isGeneratingImage ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <ImageIcon size={20} />
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={isLoading || !input.trim()}
+                    size="icon"
+                    title="Send message (Enter)"
+                    className="w-10 h-10 rounded-lg bg-gradient-to-r from-accent to-accent/80 hover:from-accent hover:to-accent hover:shadow-lg hover:shadow-accent/40 text-accent-foreground transition-all duration-200 disabled:opacity-30 hover:scale-105 active:scale-95 flex-shrink-0"
+                  >
+                    {isLoading ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <ArrowUp size={20} />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Helper text */}
+              <div className="flex items-center justify-between px-4 py-2.5 bg-background/40 rounded-b-xl border-t border-border/10">
+                <div className="text-xs text-muted-foreground/70 space-x-4 flex">
+                  <span>⌨️ Enter to send</span>
+                  <span>•</span>
+                  <span>Shift+Enter for new line</span>
+                </div>
+                {input.trim() && (
+                  <div className="text-xs text-accent font-medium animate-pulse">
+                    Ready to send
+                  </div>
+                )}
               </div>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground/70 text-center mt-3">
-            Press Enter to send, Shift+Enter for new line
-          </p>
         </div>
       </div>
     </div>
