@@ -1,5 +1,27 @@
 import { createClient } from '@/lib/supabase/server'
-import { UUID } from 'crypto'
+
+export async function ensureGuestUser(guestUserId: string) {
+  const supabase = await createClient()
+  
+  // Check if guest user exists
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', guestUserId)
+    .single()
+  
+  if (!existingUser) {
+    // Create guest user
+    const { error: userError } = await supabase
+      .from('users')
+      .insert({ id: guestUserId, email: 'guest@vizzy.app' })
+    
+    if (userError && userError.code !== '23505') {
+      // Ignore duplicate key error
+      console.error('Error creating guest user:', userError)
+    }
+  }
+}
 
 export interface Profile {
   id: string

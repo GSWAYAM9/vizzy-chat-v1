@@ -1,5 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
-import { addGeneratedImage } from '@/lib/db'
+import { addGeneratedImageAnon } from '@/lib/db'
 
 const BRIA_API_KEY = process.env.BRIA_API_KEY
 const BRIA_API_URL = 'https://api.bria.ai/v2'
@@ -27,15 +26,6 @@ export async function POST(req: Request) {
         { error: 'Bria API key not configured' },
         { status: 500 }
       )
-    }
-
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Call Bria API to generate image
@@ -73,7 +63,7 @@ export async function POST(req: Request) {
     const imageUrl = data.images[0].url
 
     // Store image in database
-    const generatedImage = await addGeneratedImage(
+    const generatedImage = await addGeneratedImageAnon(
       conversationId,
       messageId || null,
       prompt,

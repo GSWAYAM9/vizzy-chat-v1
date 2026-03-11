@@ -1,7 +1,6 @@
 import { streamText } from 'ai'
 import { createGroq } from '@ai-sdk/groq'
-import { createClient } from '@/lib/supabase/server'
-import { getMessages, addMessage } from '@/lib/db'
+import { getMessagesAnon, addMessageAnon } from '@/lib/db'
 
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
@@ -18,32 +17,17 @@ export async function POST(req: Request) {
       )
     }
 
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     // Add user message to database
-    await addMessage(conversationId, 'user', message)
+    await addMessageAnon(conversationId, 'user', message)
 
     // Get conversation history
-    const messages = await getMessages(conversationId)
+    const messages = await getMessagesAnon(conversationId)
 
     // Convert to format expected by streamText
     const chatMessages = messages.map((msg) => ({
       role: msg.role as 'user' | 'assistant',
       content: msg.content,
     }))
-
-    // Add the new message
-    chatMessages.push({
-      role: 'user' as const,
-      content: message,
-    })
 
     // Stream response from Groq
     const result = streamText({
@@ -72,7 +56,7 @@ You are warm, supportive, and inspiring.`,
             const { done, value } = await reader.read()
             if (done) {
               // Save complete assistant message after streaming
-              await addMessage(conversationId, 'assistant', fullResponse)
+              await addMessageAnon(conversationId, 'assistant', fullResponse)
               controller.close()
               break
             }

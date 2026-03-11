@@ -1,24 +1,20 @@
-import { createClient } from '@/lib/supabase/server'
 import {
   createConversation,
   getConversations,
   updateConversation,
   deleteConversation,
-  createProfile,
+  ensureGuestUser,
 } from '@/lib/db'
+
+// Guest user ID for non-authenticated usage
+const GUEST_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 export async function GET() {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const conversations = await getConversations(user.id)
+    // Ensure guest user exists
+    await ensureGuestUser(GUEST_USER_ID)
+    
+    const conversations = await getConversations(GUEST_USER_ID)
     return Response.json({ conversations })
   } catch (error) {
     console.error('Get conversations error:', error)
@@ -28,25 +24,12 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+    // Ensure guest user exists
+    await ensureGuestUser(GUEST_USER_ID)
+    
     const { title } = await req.json()
 
-    // Ensure user profile exists
-    try {
-      await createProfile(user.id, user.email || '')
-    } catch (error) {
-      // Profile might already exist, continue
-    }
-
-    const conversation = await createConversation(user.id, title)
+    const conversation = await createConversation(GUEST_USER_ID, title)
     return Response.json({ conversation }, { status: 201 })
   } catch (error) {
     console.error('Create conversation error:', error)
@@ -56,15 +39,6 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { conversationId, title, context } = await req.json()
 
     if (!conversationId) {
@@ -76,7 +50,7 @@ export async function PATCH(req: Request) {
 
     const conversation = await updateConversation(
       conversationId,
-      user.id,
+      GUEST_USER_ID,
       { title, context }
     )
     return Response.json({ conversation })
@@ -88,15 +62,6 @@ export async function PATCH(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { searchParams } = new URL(req.url)
     const conversationId = searchParams.get('id')
 
@@ -107,7 +72,7 @@ export async function DELETE(req: Request) {
       )
     }
 
-    await deleteConversation(conversationId, user.id)
+    await deleteConversation(conversationId, GUEST_USER_ID)
     return Response.json({ success: true })
   } catch (error) {
     console.error('Delete conversation error:', error)

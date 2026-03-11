@@ -1,23 +1,16 @@
-import { createClient } from '@/lib/supabase/server'
 import { getConversation, getMessages, getGeneratedImages } from '@/lib/db'
+
+// Guest user ID for non-authenticated usage
+const GUEST_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { id: conversationId } = await params
 
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { id: conversationId } = params
-
-    const conversation = await getConversation(conversationId, user.id)
+    const conversation = await getConversation(conversationId, GUEST_USER_ID)
     const messages = await getMessages(conversationId)
     const images = await getGeneratedImages(conversationId)
 
