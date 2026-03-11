@@ -1,3 +1,4 @@
+// Database utility functions for Vizzy Chat
 import { createClient } from '@/lib/supabase/server'
 
 export interface Profile {
