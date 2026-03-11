@@ -1,3 +1,4 @@
+// Conversations API - Guest Mode
 import {
   createConversationAnon,
   getConversationsAnon,
