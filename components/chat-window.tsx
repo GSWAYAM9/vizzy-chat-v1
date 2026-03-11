@@ -13,6 +13,7 @@ interface ChatWindowProps {
   generatedImages: GeneratedImage[]
   onMessageAdded: (message: Message) => void
   onImageGenerated: (image: GeneratedImage) => void
+  onStartConversation?: () => Promise<void>
 }
 
 export default function ChatWindow({
@@ -21,6 +22,7 @@ export default function ChatWindow({
   generatedImages,
   onMessageAdded,
   onImageGenerated,
+  onStartConversation,
 }: ChatWindowProps) {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -136,27 +138,72 @@ export default function ChatWindow({
     }
   }
 
+  const handleStartNewConversation = async () => {
+    if (onStartConversation) {
+      await onStartConversation()
+    }
+  }
+
   if (!conversation) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-background relative overflow-hidden">
+      <div className="flex-1 flex flex-col bg-background relative overflow-hidden">
         {/* Background elements */}
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl animate-float" />
           <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
         </div>
         
-        <div className="relative text-center max-w-lg px-6">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-accent to-accent/60 flex items-center justify-center animate-glow">
-            <Sparkles size={36} className="text-accent-foreground" />
+        {/* Center Content */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="relative text-center max-w-lg px-6">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-accent to-accent/60 flex items-center justify-center animate-glow">
+              <Sparkles size={36} className="text-accent-foreground" />
+            </div>
+            <h2 className="text-3xl font-bold text-foreground mb-3 tracking-tight">Welcome to Vizzy</h2>
+            <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
+              Your AI-powered creative assistant for conversations and stunning image generation.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3 mb-8">
+              <div className="px-4 py-2 glass rounded-xl text-sm text-muted-foreground">Chat with AI</div>
+              <div className="px-4 py-2 glass rounded-xl text-sm text-muted-foreground">Generate Images</div>
+              <div className="px-4 py-2 glass rounded-xl text-sm text-muted-foreground">Creative Studio</div>
+            </div>
           </div>
-          <h2 className="text-3xl font-bold text-foreground mb-3 tracking-tight">Welcome to Vizzy</h2>
-          <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
-            Your AI-powered creative assistant for conversations and stunning image generation.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <div className="px-4 py-2 glass rounded-xl text-sm text-muted-foreground">Chat with AI</div>
-            <div className="px-4 py-2 glass rounded-xl text-sm text-muted-foreground">Generate Images</div>
-            <div className="px-4 py-2 glass rounded-xl text-sm text-muted-foreground">Creative Studio</div>
+        </div>
+
+        {/* Input Area for Welcome Screen */}
+        <div className="p-4 lg:p-6 border-t border-border/30 relative">
+          <div className="max-w-3xl mx-auto">
+            <div 
+              onClick={handleStartNewConversation}
+              className="glass-strong rounded-2xl p-1 cursor-pointer hover:ring-2 hover:ring-accent/50 hover:shadow-lg hover:shadow-accent/10 transition-all duration-300 border border-border/20 hover:border-border/40"
+            >
+              <div className="flex items-center gap-3 px-4 py-4">
+                <div className="flex-1 text-muted-foreground/60 text-base font-medium">
+                  Click here to start a new conversation...
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="w-10 h-10 rounded-lg text-muted-foreground/50"
+                    disabled
+                  >
+                    <ImageIcon size={20} />
+                  </Button>
+                  <Button
+                    size="icon"
+                    className="w-10 h-10 rounded-lg bg-gradient-to-r from-accent to-accent/80 text-accent-foreground opacity-50"
+                    disabled
+                  >
+                    <ArrowUp size={20} />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground/50 text-center mt-3">
+              Start a new conversation to chat or generate images
+            </p>
           </div>
         </div>
       </div>

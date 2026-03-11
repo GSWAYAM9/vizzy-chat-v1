@@ -119,6 +119,7 @@ export default function ChatPage() {
         onImageGenerated={(newImage) =>
           setGeneratedImages([newImage, ...generatedImages])
         }
+        onStartConversation={handleNewConversation}
       />
     </div>
   )
