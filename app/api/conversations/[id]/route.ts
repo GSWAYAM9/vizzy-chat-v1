@@ -1,7 +1,4 @@
-import { getConversation, getMessages, getGeneratedImages } from '@/lib/db'
-
-// Guest user ID for non-authenticated usage
-const GUEST_USER_ID = '00000000-0000-0000-0000-000000000001'
+import { getConversationAnon, getMessagesAnon, getGeneratedImagesAnon } from '@/lib/db'
 
 export async function GET(
   req: Request,
@@ -10,9 +7,9 @@ export async function GET(
   try {
     const { id: conversationId } = await params
 
-    const conversation = await getConversation(conversationId, GUEST_USER_ID)
-    const messages = await getMessages(conversationId)
-    const images = await getGeneratedImages(conversationId)
+    const conversation = await getConversationAnon(conversationId)
+    const messages = await getMessagesAnon(conversationId)
+    const images = await getGeneratedImagesAnon(conversationId)
 
     return Response.json({
       conversation,
