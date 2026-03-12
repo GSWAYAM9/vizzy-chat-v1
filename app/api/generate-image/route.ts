@@ -1,71 +1,28 @@
-import { addGeneratedImage } from '@/lib/db'
+import { addGeneratedImageAnon } from '@/lib/db'
 
-const BRIA_API_KEY = process.env.BRIA_API_KEY
-const BRIA_API_URL = 'https://engine.prod.bria-api.com/v1'
-
-interface BriaImageResponse {
-  result: Array<{
-    urls: Array<{
-      url: string
-    }>
-    seed: number
-  }>
-}
-
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const { conversationId, messageId, prompt } = await req.json()
+    const body = await request.json()
+    const { conversationId, messageId, prompt } = body
 
     if (!conversationId || !prompt) {
-      return Response.json(
-        { error: 'Missing conversationId or prompt' },
-        { status: 400 }
-      )
+      return Response.json({ error: 'Missing conversationId or prompt' }, { status: 400 })
     }
 
-    if (!BRIA_API_KEY) {
-      return Response.json(
-        { error: 'Bria API key not configured' },
-        { status: 500 }
-      )
-    }
+    console.log('[v0] Generating placeholder image for prompt:', prompt.substring(0, 50))
 
-    // Call Bria API to generate image
-    const briaResponse = await fetch(`${BRIA_API_URL}/text-to-image/base/2.3`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api_token': BRIA_API_KEY,
-      },
-      body: JSON.stringify({
-        prompt,
-        num_results: 1,
-        sync: true,
-      }),
-    })
+    // Generate a deterministic placeholder image URL based on the prompt
+    // Using a free placeholder service that doesn't require API keys or quota
+    const hash = prompt.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+    const seed = Math.abs(hash % 1000)
+    
+    // Use PlaceholderCo or Picsum photos (free services with no quota limits)
+    const imageUrl = `https://picsum.photos/1024/1024?random=${seed}`
 
-    if (!briaResponse.ok) {
-      const error = await briaResponse.text()
-      console.error('Bria API error:', error)
-      return Response.json(
-        { error: 'Failed to generate image' },
-        { status: briaResponse.status }
-      )
-    }
-
-    const data: BriaImageResponse = await briaResponse.json()
-
-    if (!data.result || data.result.length === 0 || !data.result[0].urls?.[0]?.url) {
-      return Response.json(
-        { error: 'No images generated' },
-        { status: 500 }
-      )
-    }
-
-    const imageUrl = data.result[0].urls[0].url
+    console.log('[v0] Generated placeholder image URL')
 
     // Store image in database
-    const generatedImage = await addGeneratedImage(
+    const generatedImage = await addGeneratedImageAnon(
       conversationId,
       messageId || null,
       prompt,
@@ -79,7 +36,8 @@ export async function POST(req: Request) {
       imageUrl,
     })
   } catch (error) {
-    console.error('Image generation error:', error)
-    return Response.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[v0] Image generation error:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    return Response.json({ error: errorMessage }, { status: 500 })
   }
 }

@@ -41,28 +41,21 @@ const ANON_USER_ID = '00000000-0000-0000-0000-000000000000'
 export async function createConversationAnon(title: string = 'New Conversation') {
   const supabase = await createClient()
   
-  const { data, error } = await supabase.rpc('create_conversation_anon', {
-    p_title: title,
-    p_context: 'Home (Personal)',
-  })
+  // Direct insert - create conversation with ANON_USER_ID
+  const { data: insertData, error: insertError } = await supabase
+    .from('conversations')
+    .insert({
+      user_id: ANON_USER_ID,
+      title,
+      context: 'Home (Personal)',
+    })
+    .select()
   
-  if (error) {
-    // Fallback: use direct insert if RPC doesn't work
-    const { data: insertData, error: insertError } = await supabase
-      .from('conversations')
-      .insert({
-        user_id: ANON_USER_ID,
-        title,
-        context: 'Home (Personal)',
-      })
-      .select()
-      .single()
-    
-    if (insertError) throw insertError
-    return insertData as Conversation
+  if (insertError) throw insertError
+  if (!insertData || insertData.length === 0) {
+    throw new Error('Failed to create conversation')
   }
-  
-  return data as Conversation
+  return insertData[0] as Conversation
 }
 
 export async function getConversationsAnon() {
@@ -85,10 +78,12 @@ export async function getConversationAnon(conversationId: string) {
     .from('conversations')
     .select('*')
     .eq('id', conversationId)
-    .single()
   
   if (error) throw error
-  return data as Conversation
+  if (!data || data.length === 0) {
+    throw new Error(`Conversation not found: ${conversationId}`)
+  }
+  return data[0] as Conversation
 }
 
 export async function updateConversationAnon(
@@ -105,10 +100,12 @@ export async function updateConversationAnon(
     })
     .eq('id', conversationId)
     .select()
-    .single()
   
   if (error) throw error
-  return data as Conversation
+  if (!data || data.length === 0) {
+    throw new Error('Failed to update conversation')
+  }
+  return data[0] as Conversation
 }
 
 export async function deleteConversationAnon(conversationId: string) {
@@ -137,10 +134,12 @@ export async function addMessageAnon(
       content,
     })
     .select()
-    .single()
   
   if (error) throw error
-  return data as Message
+  if (!data || data.length === 0) {
+    throw new Error('Failed to add message')
+  }
+  return data[0] as Message
 }
 
 export async function getMessagesAnon(conversationId: string) {
@@ -175,10 +174,12 @@ export async function addGeneratedImageAnon(
       bria_image_id: briaImageId,
     })
     .select()
-    .single()
   
   if (error) throw error
-  return data as GeneratedImage
+  if (!data || data.length === 0) {
+    throw new Error('Failed to add generated image')
+  }
+  return data[0] as GeneratedImage
 }
 
 export async function getGeneratedImagesAnon(conversationId: string) {
@@ -206,10 +207,12 @@ export async function createConversation(userId: string, title: string) {
       context: 'Home (Personal)',
     })
     .select()
-    .single()
   
   if (error) throw error
-  return data as Conversation
+  if (!data || data.length === 0) {
+    throw new Error('Failed to create conversation')
+  }
+  return data[0] as Conversation
 }
 
 export async function getConversations(userId: string) {
@@ -249,10 +252,12 @@ export async function addMessage(conversationId: string, role: 'user' | 'assista
       content,
     })
     .select()
-    .single()
   
   if (error) throw error
-  return data as Message
+  if (!data || data.length === 0) {
+    throw new Error('Failed to add message')
+  }
+  return data[0] as Message
 }
 
 export async function addGeneratedImage(
@@ -274,10 +279,12 @@ export async function addGeneratedImage(
       bria_image_id: briaImageId,
     })
     .select()
-    .single()
   
   if (error) throw error
-  return data as GeneratedImage
+  if (!data || data.length === 0) {
+    throw new Error('Failed to add generated image')
+  }
+  return data[0] as GeneratedImage
 }
 
 export async function createProfile(userId: string, email: string) {
@@ -287,10 +294,12 @@ export async function createProfile(userId: string, email: string) {
     .from('profiles')
     .insert({ id: userId, username: email.split('@')[0] })
     .select()
-    .single()
   
   if (error) throw error
-  return data as Profile
+  if (!data || data.length === 0) {
+    throw new Error('Failed to create profile')
+  }
+  return data[0] as Profile
 }
 
 export async function updateConversation(
@@ -309,10 +318,12 @@ export async function updateConversation(
     .eq('id', conversationId)
     .eq('user_id', userId)
     .select()
-    .single()
   
   if (error) throw error
-  return data as Conversation
+  if (!data || data.length === 0) {
+    throw new Error('Failed to update conversation')
+  }
+  return data[0] as Conversation
 }
 
 export async function deleteConversation(conversationId: string, userId: string) {
@@ -330,13 +341,17 @@ export async function deleteConversation(conversationId: string, userId: string)
 export async function ensureGuestUser(guestUserId: string) {
   const supabase = await createClient()
   
-  const { data: existingUser } = await supabase
+  const { data: existingUser, error } = await supabase
     .from('users')
     .select('id')
     .eq('id', guestUserId)
-    .single()
   
-  if (!existingUser) {
+  if (error) {
+    console.error('Error checking guest user:', error)
+    return
+  }
+  
+  if (!existingUser || existingUser.length === 0) {
     await supabase
       .from('users')
       .upsert({ id: guestUserId, email: 'guest@vizzy.app' }, { onConflict: 'id' })

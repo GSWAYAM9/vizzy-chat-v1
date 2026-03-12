@@ -29,13 +29,30 @@ export async function POST(req: Request) {
       content: msg.content,
     }))
 
+    // Check if user is asking for image generation
+    const lowerMessage = message.toLowerCase()
+    const isImageRequest = lowerMessage.includes('generate') && (lowerMessage.includes('image') || lowerMessage.includes('picture') || lowerMessage.includes('photo')) ||
+      lowerMessage.includes('create') && (lowerMessage.includes('image') || lowerMessage.includes('picture') || lowerMessage.includes('art')) ||
+      lowerMessage.includes('draw') || lowerMessage.includes('make me an image') || lowerMessage.includes('show me')
+
     // Stream response from Groq
     const result = streamText({
       model: groq('llama-3.3-70b-versatile'),
-      system: `You are Vizzy, a creative AI assistant specialized in helping users with artistic and personal projects. 
-You excel at providing creative suggestions, generating ideas, and helping users visualize their concepts.
-When users ask for images, encourage them to use the image generation feature. 
-You are warm, supportive, and inspiring.`,
+      system: `You are Vizzy, a creative AI assistant with BUILT-IN image generation capabilities powered by Bria AI.
+
+IMPORTANT: You CAN generate images! When a user asks you to generate, create, or draw an image:
+1. Respond enthusiastically that you're generating the image for them
+2. Include the exact phrase [GENERATING_IMAGE: description] where "description" is a detailed prompt for the image
+3. Example: "I'm creating that for you now! [GENERATING_IMAGE: A happy golden retriever playing in a green meadow under a sunny blue sky with fluffy white clouds]"
+
+You excel at:
+- Generating stunning images from descriptions
+- Providing creative suggestions and ideas
+- Helping users refine their visual concepts
+- Creating art for personal projects, posters, and creative work
+
+You are warm, supportive, inspiring, and always eager to help bring creative visions to life.
+When users ask for images, ALWAYS generate them - never tell them to use external tools.`,
       messages: chatMessages,
     })
 

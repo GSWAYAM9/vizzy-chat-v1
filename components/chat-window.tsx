@@ -97,14 +97,64 @@ export default function ChatWindow({
         fullContent += text
       }
 
+      // Check if AI wants to generate an image
+      const imageMatch = fullContent.match(/\[GENERATING_IMAGE:\s*([^\]]+)\]/i)
+      console.log('[v0] Full AI response:', fullContent)
+      console.log('[v0] Image match result:', imageMatch)
+      
+      // Clean the content to display (remove the tag)
+      const cleanContent = fullContent.replace(/\[GENERATING_IMAGE:\s*[^\]]+\]/gi, '').trim()
+      
       const newMessage: Message = {
         id: Math.random().toString(36).substr(2, 9),
         conversation_id: conversation.id,
         role: 'assistant',
-        content: fullContent,
+        content: cleanContent,
         created_at: new Date().toISOString(),
       }
       onMessageAdded(newMessage)
+      
+      // Auto-generate image if AI requested it
+      if (imageMatch && imageMatch[1]) {
+        const imagePrompt = imageMatch[1].trim()
+        console.log('[v0] Triggering image generation with prompt:', imagePrompt)
+        setIsGeneratingImage(true)
+        try {
+          const imageResponse = await fetch('/api/generate-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              conversationId: conversation.id,
+              messageId: null,
+              prompt: imagePrompt,
+            }),
+          })
+          console.log('[v0] Image generation response status:', imageResponse.status)
+          if (imageResponse.ok) {
+            const imageData = await imageResponse.json()
+            console.log('[v0] Image generated successfully, full response:', imageData)
+            console.log('[v0] Image property:', imageData.image)
+            console.log('[v0] ImageUrl property:', imageData.imageUrl)
+            if (imageData.image) {
+              onImageGenerated(imageData.image)
+            } else if (imageData.imageUrl) {
+              onImageGenerated({ image_url: imageData.imageUrl })
+            } else {
+              console.error('[v0] No image URL found in response')
+            }
+            setShowGallery(true)
+          } else {
+            const errorData = await imageResponse.json()
+            console.error('[v0] Image generation failed with status', imageResponse.status, ':', errorData)
+          }
+        } catch (imgError) {
+          console.error('[v0] Error generating image:', imgError)
+        } finally {
+          setIsGeneratingImage(false)
+        }
+      } else {
+        console.log('[v0] No image generation requested')
+      }
     } catch (error) {
       console.error('Error sending message:', error)
     } finally {
