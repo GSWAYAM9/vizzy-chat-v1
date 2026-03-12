@@ -1,4 +1,4 @@
-import { addGeneratedImage } from '@/lib/db'
+import { addGeneratedImageAnon } from '@/lib/db'
 
 const BRIA_API_KEY = process.env.BRIA_API_KEY
 const BRIA_API_URL = 'https://engine.prod.bria-api.com/v1'
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     const imageUrl = data.result[0].urls[0].url
 
     // Store image in database
-    const generatedImage = await addGeneratedImage(
+    const generatedImage = await addGeneratedImageAnon(
       conversationId,
       messageId || null,
       prompt,
