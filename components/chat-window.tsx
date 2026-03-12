@@ -132,12 +132,20 @@ export default function ChatWindow({
           console.log('[v0] Image generation response status:', imageResponse.status)
           if (imageResponse.ok) {
             const imageData = await imageResponse.json()
-            console.log('[v0] Image generated successfully:', imageData)
-            onImageGenerated(imageData.image)
+            console.log('[v0] Image generated successfully, full response:', imageData)
+            console.log('[v0] Image property:', imageData.image)
+            console.log('[v0] ImageUrl property:', imageData.imageUrl)
+            if (imageData.image) {
+              onImageGenerated(imageData.image)
+            } else if (imageData.imageUrl) {
+              onImageGenerated({ image_url: imageData.imageUrl })
+            } else {
+              console.error('[v0] No image URL found in response')
+            }
             setShowGallery(true)
           } else {
             const errorData = await imageResponse.json()
-            console.error('[v0] Image generation failed:', errorData)
+            console.error('[v0] Image generation failed with status', imageResponse.status, ':', errorData)
           }
         } catch (imgError) {
           console.error('[v0] Error generating image:', imgError)
