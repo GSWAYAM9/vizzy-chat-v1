@@ -17,7 +17,8 @@ export async function GET(
       images,
     })
   } catch (error) {
-    console.error('Get conversation error:', error)
-    return Response.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[v0] Get conversation error:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    return Response.json({ error: errorMessage }, { status: 500 })
   }
 }

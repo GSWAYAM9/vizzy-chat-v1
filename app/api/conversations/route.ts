@@ -3,26 +3,37 @@ import {
   getConversationsAnon,
   updateConversationAnon,
   deleteConversationAnon,
+  ensureGuestUser,
 } from '@/lib/db'
+
+const ANON_USER_ID = '00000000-0000-0000-0000-000000000000'
 
 export async function GET() {
   try {
+    // Ensure guest user exists
+    await ensureGuestUser(ANON_USER_ID)
+    
     const conversations = await getConversationsAnon()
     return Response.json({ conversations })
   } catch (error) {
-    console.error('Get conversations error:', error)
-    return Response.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[v0] Get conversations error:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    return Response.json({ error: errorMessage }, { status: 500 })
   }
 }
 
 export async function POST(req: Request) {
   try {
+    // Ensure guest user exists
+    await ensureGuestUser(ANON_USER_ID)
+    
     const { title } = await req.json()
     const conversation = await createConversationAnon(title)
     return Response.json({ conversation }, { status: 201 })
   } catch (error) {
-    console.error('Create conversation error:', error)
-    return Response.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[v0] Create conversation error:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    return Response.json({ error: errorMessage }, { status: 500 })
   }
 }
 
@@ -40,8 +51,9 @@ export async function PATCH(req: Request) {
     const conversation = await updateConversationAnon(conversationId, { title, context })
     return Response.json({ conversation })
   } catch (error) {
-    console.error('Update conversation error:', error)
-    return Response.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[v0] Update conversation error:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    return Response.json({ error: errorMessage }, { status: 500 })
   }
 }
 
@@ -60,7 +72,8 @@ export async function DELETE(req: Request) {
     await deleteConversationAnon(conversationId)
     return Response.json({ success: true })
   } catch (error) {
-    console.error('Delete conversation error:', error)
-    return Response.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[v0] Delete conversation error:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    return Response.json({ error: errorMessage }, { status: 500 })
   }
 }
