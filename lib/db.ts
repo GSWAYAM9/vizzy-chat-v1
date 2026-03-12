@@ -41,28 +41,19 @@ const ANON_USER_ID = '00000000-0000-0000-0000-000000000000'
 export async function createConversationAnon(title: string = 'New Conversation') {
   const supabase = await createClient()
   
-  const { data, error } = await supabase.rpc('create_conversation_anon', {
-    p_title: title,
-    p_context: 'Home (Personal)',
-  })
+  // Direct insert - create conversation with ANON_USER_ID
+  const { data: insertData, error: insertError } = await supabase
+    .from('conversations')
+    .insert({
+      user_id: ANON_USER_ID,
+      title,
+      context: 'Home (Personal)',
+    })
+    .select()
+    .single()
   
-  if (error) {
-    // Fallback: use direct insert if RPC doesn't work
-    const { data: insertData, error: insertError } = await supabase
-      .from('conversations')
-      .insert({
-        user_id: ANON_USER_ID,
-        title,
-        context: 'Home (Personal)',
-      })
-      .select()
-      .single()
-    
-    if (insertError) throw insertError
-    return insertData as Conversation
-  }
-  
-  return data as Conversation
+  if (insertError) throw insertError
+  return insertData as Conversation
 }
 
 export async function getConversationsAnon() {
@@ -85,10 +76,12 @@ export async function getConversationAnon(conversationId: string) {
     .from('conversations')
     .select('*')
     .eq('id', conversationId)
-    .single()
   
   if (error) throw error
-  return data as Conversation
+  if (!data || data.length === 0) {
+    throw new Error(`Conversation not found: ${conversationId}`)
+  }
+  return data[0] as Conversation
 }
 
 export async function updateConversationAnon(
