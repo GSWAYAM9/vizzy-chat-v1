@@ -1,5 +1,6 @@
 import { addGeneratedImageAnon } from '@/lib/db'
 
+// Bria API v2 endpoints for image generation
 const BRIA_API_URL = 'https://engine.prod.bria-api.com/v2'
 
 interface BriaAsyncResponse {
