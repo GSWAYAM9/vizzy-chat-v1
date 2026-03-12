@@ -99,6 +99,8 @@ export default function ChatWindow({
 
       // Check if AI wants to generate an image
       const imageMatch = fullContent.match(/\[GENERATING_IMAGE:\s*([^\]]+)\]/i)
+      console.log('[v0] Full AI response:', fullContent)
+      console.log('[v0] Image match result:', imageMatch)
       
       // Clean the content to display (remove the tag)
       const cleanContent = fullContent.replace(/\[GENERATING_IMAGE:\s*[^\]]+\]/gi, '').trim()
@@ -115,6 +117,7 @@ export default function ChatWindow({
       // Auto-generate image if AI requested it
       if (imageMatch && imageMatch[1]) {
         const imagePrompt = imageMatch[1].trim()
+        console.log('[v0] Triggering image generation with prompt:', imagePrompt)
         setIsGeneratingImage(true)
         try {
           const imageResponse = await fetch('/api/generate-image', {
@@ -126,16 +129,23 @@ export default function ChatWindow({
               prompt: imagePrompt,
             }),
           })
+          console.log('[v0] Image generation response status:', imageResponse.status)
           if (imageResponse.ok) {
             const imageData = await imageResponse.json()
+            console.log('[v0] Image generated successfully:', imageData)
             onImageGenerated(imageData.image)
             setShowGallery(true)
+          } else {
+            const errorData = await imageResponse.json()
+            console.error('[v0] Image generation failed:', errorData)
           }
         } catch (imgError) {
-          console.error('Error generating image:', imgError)
+          console.error('[v0] Error generating image:', imgError)
         } finally {
           setIsGeneratingImage(false)
         }
+      } else {
+        console.log('[v0] No image generation requested')
       }
     } catch (error) {
       console.error('Error sending message:', error)
