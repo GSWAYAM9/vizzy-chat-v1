@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'api_token': apiKey,
       },
       body: JSON.stringify({
         prompt,
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       await new Promise(r => setTimeout(r, 1000))
 
       const statusResp = await fetch(requestData.status_url, {
-        headers: { 'Authorization': `Bearer ${apiKey}` },
+        headers: { 'api_token': apiKey },
       })
 
       if (!statusResp.ok) {
