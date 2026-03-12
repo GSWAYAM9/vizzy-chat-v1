@@ -29,12 +29,7 @@ export async function POST(req: Request) {
     }
 
     if (!BRIA_API_KEY) {
-      console.error('[v0] BRIA_API_KEY not configured. Value:', BRIA_API_KEY)
-      return Response.json(
-        { error: 'Bria API key not configured' },
-        { status: 500 }
-      )
-    }
+      console.error('[v0] BRIA_API_KEY not configured')
       return Response.json(
         { error: 'Bria API key not configured' },
         { status: 500 }
@@ -57,7 +52,7 @@ export async function POST(req: Request) {
 
     if (!briaResponse.ok) {
       const error = await briaResponse.text()
-      console.error('Bria API error:', error)
+      console.error('[v0] Bria API error:', error)
       return Response.json(
         { error: 'Failed to generate image' },
         { status: briaResponse.status }
@@ -122,7 +117,8 @@ export async function POST(req: Request) {
       imageUrl,
     })
   } catch (error) {
-    console.error('Image generation error:', error)
-    return Response.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[v0] Image generation error:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    return Response.json({ error: errorMessage }, { status: 500 })
   }
 }
