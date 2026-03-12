@@ -1,6 +1,5 @@
 import { addGeneratedImageAnon } from '@/lib/db'
 
-// Bria API v2 endpoints for image generation
 const BRIA_API_URL = 'https://engine.prod.bria-api.com/v2'
 
 interface BriaAsyncResponse {
@@ -18,7 +17,7 @@ interface BriaStatusResponse {
 
 export async function POST(req: Request) {
   const BRIA_API_KEY = process.env.BRIA_API_KEY
-  
+
   try {
     const { conversationId, messageId, prompt } = await req.json()
 
@@ -30,14 +29,12 @@ export async function POST(req: Request) {
     }
 
     if (!BRIA_API_KEY) {
-      console.error('[v0] BRIA_API_KEY not configured')
       return Response.json(
         { error: 'Bria API key not configured' },
         { status: 500 }
       )
     }
 
-    console.log('[v0] Calling Bria API with key length:', BRIA_API_KEY.length)
     const briaResponse = await fetch(`${BRIA_API_URL}/image/generate`, {
       method: 'POST',
       headers: {
@@ -53,7 +50,7 @@ export async function POST(req: Request) {
 
     if (!briaResponse.ok) {
       const error = await briaResponse.text()
-      console.error('[v0] Bria API error:', error)
+      console.error('Bria API error:', error)
       return Response.json(
         { error: 'Failed to generate image' },
         { status: briaResponse.status }
@@ -61,28 +58,27 @@ export async function POST(req: Request) {
     }
 
     const asyncData: BriaAsyncResponse = await briaResponse.json()
-    
-    // Poll for result
+
     let imageUrl = ''
     let attempts = 0
-    const maxAttempts = 60 // 60 seconds max
-    
+    const maxAttempts = 60
+
     while (attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       const statusResponse = await fetch(asyncData.status_url, {
         headers: {
           'Authorization': `Bearer ${BRIA_API_KEY}`,
         },
       })
-      
+
       if (!statusResponse.ok) {
         attempts++
         continue
       }
-      
+
       const statusData: BriaStatusResponse = await statusResponse.json()
-      
+
       if (statusData.status === 'completed' && statusData.result?.image_url) {
         imageUrl = statusData.result.image_url
         break
@@ -92,10 +88,10 @@ export async function POST(req: Request) {
           { status: 500 }
         )
       }
-      
+
       attempts++
     }
-    
+
     if (!imageUrl) {
       return Response.json(
         { error: 'Image generation timed out' },
@@ -103,7 +99,6 @@ export async function POST(req: Request) {
       )
     }
 
-    // Store image in database
     const generatedImage = await addGeneratedImageAnon(
       conversationId,
       messageId || null,
@@ -118,7 +113,7 @@ export async function POST(req: Request) {
       imageUrl,
     })
   } catch (error) {
-    console.error('[v0] Image generation error:', error)
+    console.error('Image generation error:', error)
     const errorMessage = error instanceof Error ? error.message : String(error)
     return Response.json({ error: errorMessage }, { status: 500 })
   }
