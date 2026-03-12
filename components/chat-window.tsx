@@ -97,14 +97,46 @@ export default function ChatWindow({
         fullContent += text
       }
 
+      // Check if AI wants to generate an image
+      const imageMatch = fullContent.match(/\[GENERATING_IMAGE:\s*([^\]]+)\]/i)
+      
+      // Clean the content to display (remove the tag)
+      const cleanContent = fullContent.replace(/\[GENERATING_IMAGE:\s*[^\]]+\]/gi, '').trim()
+      
       const newMessage: Message = {
         id: Math.random().toString(36).substr(2, 9),
         conversation_id: conversation.id,
         role: 'assistant',
-        content: fullContent,
+        content: cleanContent,
         created_at: new Date().toISOString(),
       }
       onMessageAdded(newMessage)
+      
+      // Auto-generate image if AI requested it
+      if (imageMatch && imageMatch[1]) {
+        const imagePrompt = imageMatch[1].trim()
+        setIsGeneratingImage(true)
+        try {
+          const imageResponse = await fetch('/api/generate-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              conversationId: conversation.id,
+              messageId: null,
+              prompt: imagePrompt,
+            }),
+          })
+          if (imageResponse.ok) {
+            const imageData = await imageResponse.json()
+            onImageGenerated(imageData.image)
+            setShowGallery(true)
+          }
+        } catch (imgError) {
+          console.error('Error generating image:', imgError)
+        } finally {
+          setIsGeneratingImage(false)
+        }
+      }
     } catch (error) {
       console.error('Error sending message:', error)
     } finally {
@@ -113,18 +145,13 @@ export default function ChatWindow({
   }
 
   const handleGenerateImage = async () => {
-    console.log('[v0] handleGenerateImage called', { input: input.trim(), conversation, isGeneratingImage })
-    if (!input.trim() || !conversation || isGeneratingImage) {
-      console.log('[v0] handleGenerateImage early return - missing requirements')
-      return
-    }
+    if (!input.trim() || !conversation || isGeneratingImage) return
 
     const prompt = input.trim()
     setInput('')
     setIsGeneratingImage(true)
 
     try {
-      console.log('[v0] Calling generate-image API with prompt:', prompt)
       const response = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -135,18 +162,12 @@ export default function ChatWindow({
         }),
       })
 
-      console.log('[v0] generate-image response status:', response.status)
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error('[v0] generate-image error:', errorData)
-        throw new Error('Failed to generate image')
-      }
+      if (!response.ok) throw new Error('Failed to generate image')
       const data = await response.json()
-      console.log('[v0] generate-image success:', data)
       onImageGenerated(data.image)
       setShowGallery(true)
     } catch (error) {
-      console.error('[v0] Error generating image:', error)
+      console.error('Error generating image:', error)
     } finally {
       setIsGeneratingImage(false)
     }
