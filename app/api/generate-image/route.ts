@@ -1,15 +1,19 @@
 import { addGeneratedImageAnon } from '@/lib/db'
 
 const BRIA_API_KEY = process.env.BRIA_API_KEY
-const BRIA_API_URL = 'https://engine.prod.bria-api.com/v1'
+const BRIA_API_URL = 'https://engine.prod.bria-api.com/v2'
 
-interface BriaImageResponse {
-  result: Array<{
-    urls: Array<{
-      url: string
-    }>
-    seed: number
-  }>
+interface BriaAsyncResponse {
+  request_id: string
+  status_url: string
+}
+
+interface BriaStatusResponse {
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  result?: {
+    image_url: string
+  }
+  error?: string
 }
 
 export async function POST(req: Request) {
@@ -30,17 +34,17 @@ export async function POST(req: Request) {
       )
     }
 
-    // Call Bria API to generate image
-    const briaResponse = await fetch(`${BRIA_API_URL}/text-to-image/base/2.3`, {
+    // Call Bria API v2 to generate image (async by default)
+    const briaResponse = await fetch(`${BRIA_API_URL}/image/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'api_token': BRIA_API_KEY,
+        'Authorization': `Bearer ${BRIA_API_KEY}`,
       },
       body: JSON.stringify({
         prompt,
-        num_results: 1,
-        sync: true,
+        aspect_ratio: '1:1',
+        num_images: 1,
       }),
     })
 
@@ -53,16 +57,48 @@ export async function POST(req: Request) {
       )
     }
 
-    const data: BriaImageResponse = await briaResponse.json()
-
-    if (!data.result || data.result.length === 0 || !data.result[0].urls?.[0]?.url) {
+    const asyncData: BriaAsyncResponse = await briaResponse.json()
+    
+    // Poll for result
+    let imageUrl = ''
+    let attempts = 0
+    const maxAttempts = 60 // 60 seconds max
+    
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      const statusResponse = await fetch(asyncData.status_url, {
+        headers: {
+          'Authorization': `Bearer ${BRIA_API_KEY}`,
+        },
+      })
+      
+      if (!statusResponse.ok) {
+        attempts++
+        continue
+      }
+      
+      const statusData: BriaStatusResponse = await statusResponse.json()
+      
+      if (statusData.status === 'completed' && statusData.result?.image_url) {
+        imageUrl = statusData.result.image_url
+        break
+      } else if (statusData.status === 'failed') {
+        return Response.json(
+          { error: statusData.error || 'Image generation failed' },
+          { status: 500 }
+        )
+      }
+      
+      attempts++
+    }
+    
+    if (!imageUrl) {
       return Response.json(
-        { error: 'No images generated' },
+        { error: 'Image generation timed out' },
         { status: 500 }
       )
     }
-
-    const imageUrl = data.result[0].urls[0].url
 
     // Store image in database
     const generatedImage = await addGeneratedImageAnon(
@@ -70,7 +106,7 @@ export async function POST(req: Request) {
       messageId || null,
       prompt,
       imageUrl,
-      null
+      asyncData.request_id
     )
 
     return Response.json({
