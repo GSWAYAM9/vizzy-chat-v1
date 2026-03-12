@@ -1,5 +1,4 @@
 import { addGeneratedImageAnon } from '@/lib/db'
-import { GoogleGenerativeAI } from '@google/generative-ai'
 
 export async function POST(request: Request) {
   const apiKey = process.env.GOOGLE_GEMINI_API_KEY
@@ -13,28 +12,55 @@ export async function POST(request: Request) {
     }
 
     if (!apiKey) {
+      console.error('[v0] Google Gemini API key not configured')
       return Response.json({ error: 'Google Gemini API key not configured' }, { status: 500 })
     }
 
-    console.log('[v0] Generating image with Google Gemini')
+    console.log('[v0] Generating image with Google Gemini - prompt:', prompt.substring(0, 50))
 
-    // Initialize Google AI client
-    const client = new GoogleGenerativeAI(apiKey)
-    const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' })
+    // Use Google's Gemini 2.0 Flash model to generate image via REST API
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `Create a detailed image description that could be rendered visually. Scene: ${prompt}. Provide only the description without any preamble.`,
+              },
+            ],
+          },
+        ],
+      }),
+    })
 
-    // Generate image description (since Gemini doesn't generate images directly,
-    // we'll use Imaginary API or similar, so for now use placeholder)
-    const result = await model.generateContent(
-      `Generate a detailed visual description that could be used to create an image. The description should be very detailed and specific. Scene: ${prompt}`
-    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('[v0] Google API error:', response.status, errorText)
+      return Response.json({ error: 'Failed to generate image description' }, { status: response.status })
+    }
 
-    const description = result.response.text()
-    
-    // For now, create a placeholder image URL or use an image generation service
-    // In production, you'd integrate with an actual image generation service
-    const imageUrl = `https://images.unsplash.com/photo-${Math.random().toString(36).substring(7)}?w=1024&h=1024&q=80`
+    const result = await response.json()
+    console.log('[v0] Google API response received')
 
-    console.log('[v0] Image description generated:', description.substring(0, 100))
+    // Extract text from response
+    let imageDescription = ''
+    if (result.candidates && result.candidates[0]?.content?.parts?.[0]?.text) {
+      imageDescription = result.candidates[0].content.parts[0].text
+      console.log('[v0] Image description generated')
+    } else {
+      return Response.json({ error: 'No description generated' }, { status: 500 })
+    }
+
+    // Create a data URL with the description for now
+    // In production, you'd send this to an actual image generation service
+    const imageUrl = `data:text/plain;base64,${Buffer.from(imageDescription).toString('base64')}`
+
+    console.log('[v0] Storing image in database')
 
     // Store image in database
     const generatedImage = await addGeneratedImageAnon(
