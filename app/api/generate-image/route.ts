@@ -1,5 +1,6 @@
 import { addGeneratedImageAnon } from '@/lib/db'
-import { generateImage } from 'ai'
+
+const GOOGLE_API_KEY = process.env.GOOGLE_GEMINI_API_KEY
 
 export async function POST(request: Request) {
   try {
@@ -10,18 +11,57 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Missing conversationId or prompt' }, { status: 400 })
     }
 
-    console.log('[v0] Generating image with prompt:', prompt)
+    if (!GOOGLE_API_KEY) {
+      return Response.json({ error: 'Google Gemini API key not configured' }, { status: 500 })
+    }
 
-    // Use Google Gemini 3.1 Flash for image generation via Vercel AI Gateway
-    const result = await generateImage({
-      model: 'google/gemini-3.1-flash-image-preview',
-      prompt: prompt,
-      size: '1024x1024',
+    console.log('[v0] Generating image with Google Gemini')
+
+    // Call Google's Generative AI API directly for image generation
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/files:generateContent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': GOOGLE_API_KEY,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.9,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2048,
+        },
+      }),
     })
 
-    const imageUrl = result.image
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('[v0] Google Gemini API error:', error)
+      return Response.json({ error: 'Failed to generate image' }, { status: 500 })
+    }
+
+    const data = await response.json()
+    
+    // Extract image URL from response
+    let imageUrl = null
+    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+      const content = data.candidates[0].content
+      if (content.parts && content.parts[0]) {
+        imageUrl = content.parts[0].text
+      }
+    }
 
     if (!imageUrl) {
+      console.error('[v0] No image generated from Google Gemini')
       return Response.json({ error: 'No image generated' }, { status: 500 })
     }
 
