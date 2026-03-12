@@ -113,8 +113,9 @@ export async function POST(req: Request) {
       imageUrl,
     })
   } catch (error) {
-    console.error('Image generation error:', error)
+    console.error('[v0] Image generation error:', error)
     const errorMessage = error instanceof Error ? error.message : String(error)
     return Response.json({ error: errorMessage }, { status: 500 })
   }
 }
+
