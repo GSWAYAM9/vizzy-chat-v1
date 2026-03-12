@@ -27,9 +27,13 @@ export async function POST(request: Request) {
     }
 
     if (!apiKey) {
+      console.error('[v0] BRIA_API_KEY not set. Available env vars:', Object.keys(process.env).filter(k => k.includes('BRIA') || k.includes('API')))
       return Response.json({ error: 'Bria API key not configured' }, { status: 500 })
     }
 
+    console.log('[v0] Generating image with prompt:', prompt)
+    console.log('[v0] API Key length:', apiKey.length)
+    
     // Submit generation request
     const genResponse = await fetch(`${BRIA_API_BASE}/image/generate`, {
       method: 'POST',
@@ -46,7 +50,12 @@ export async function POST(request: Request) {
 
     if (!genResponse.ok) {
       const errText = await genResponse.text()
-      console.error('Bria generation error:', errText)
+      console.error('[v0] Bria API error - Status:', genResponse.status)
+      console.error('[v0] Bria API error - Response:', errText)
+      console.error('[v0] Bria API error - Headers:', {
+        'content-type': genResponse.headers.get('content-type'),
+        'authorization': 'Bearer [REDACTED]'
+      })
       return Response.json({ error: 'Failed to generate image' }, { status: genResponse.status })
     }
 
