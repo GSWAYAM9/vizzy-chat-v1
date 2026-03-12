@@ -1,6 +1,5 @@
 import { addGeneratedImageAnon } from '@/lib/db'
 
-const BRIA_API_KEY = process.env.BRIA_API_KEY
 const BRIA_API_URL = 'https://engine.prod.bria-api.com/v2'
 
 interface BriaAsyncResponse {
@@ -17,6 +16,8 @@ interface BriaStatusResponse {
 }
 
 export async function POST(req: Request) {
+  const BRIA_API_KEY = process.env.BRIA_API_KEY
+  
   try {
     const { conversationId, messageId, prompt } = await req.json()
 
@@ -28,13 +29,19 @@ export async function POST(req: Request) {
     }
 
     if (!BRIA_API_KEY) {
+      console.error('[v0] BRIA_API_KEY not configured. Value:', BRIA_API_KEY)
+      return Response.json(
+        { error: 'Bria API key not configured' },
+        { status: 500 }
+      )
+    }
       return Response.json(
         { error: 'Bria API key not configured' },
         { status: 500 }
       )
     }
 
-    // Call Bria API v2 to generate image (async by default)
+    console.log('[v0] Calling Bria API with key length:', BRIA_API_KEY.length)
     const briaResponse = await fetch(`${BRIA_API_URL}/image/generate`, {
       method: 'POST',
       headers: {
